@@ -8,43 +8,52 @@ const PATH_BASE = 'https://hn.algolia.com/api/v1';
 const PATH_SEARCH = '/search';
 const PARAM_SEARCH = 'query=';
 const PARAM_PAGE = 'page=';
-const PARAM_HPP = 'hitsPerPage=';
+const PARAM_HPoP = 'hitsPerPage=';
 
 class App extends Component {
     constructor(props) {
         super(props);
 
         this.state = {
-            result: null,
-            searchTerm: DEFAULT_QUERY,
+            results: null,
+            searchTerm: '',
+            searchTerm: DEFAULT_QUERY
         };
 
-        this.setTopSearchStories = this.setTopSearchStories.bind(this);
+        this.setSearchTopStories = this.setSearchTopStories.bind(this);
         this.onDismiss = this.onDismiss.bind(this);
         this.onSearchChange = this.onSearchChange.bind(this);
         this.onSearchSubmit = this.onSearchSubmit.bind(this);
         this.fetchTopSearchStories = this.fetchTopSearchStories.bind(this);
     }
 
-    setTopSearchStories(result) {
+    setSearchTopStories(result) {
         const {hits, page} = result;
-        const oldHits = page !== 0 ? this.state.result.hits : [];
+        const {searchKey, results} = this.state;
+        const oldHits = results && results[searchKey] ? results[searchKey].hits : [];
         const updatedHits = [...oldHits, ...hits];
-        this.setState({result: {hits: updatedHits, page}});
+        this.setState({
+            results: {
+                ...results,
+                [searchKey]: {hits: updatedHits, page}
+            }
+        }
+        );
     }
 
     componentDidMount() {
         const {searchTerm} = this.state;
+        this.setState({searchKey:searchTerm});
         this.fetchTopSearchStories(searchTerm);
     }
 
     onDismiss(id) {
         const isNotId = item => item.objectID !== id;
-        const updatedHits = this.state.result.hits.filter(isNotId);
-        //merge the old state.result and the updatedHits into a new object and assign to result
-        // this.setState({result: Object.assign({}, this.state.result, {hits:updatedHits})});
-        //or use the spread operator to merge all properties of result with the hits
-        this.setState({result: {...this.state.result, hits: updatedHits}});
+        const updatedHits = this.state.results.hits.filter(isNotId);
+        //merge the old state.result and the updatedHits into a new object and assign to results
+        // this.setState({results: Object.assign({}, this.state.results, {hits:updatedHits})});
+        //or use the spread operator to merge all properties of results with the hits
+        this.setState({result: {...this.state.results, hits: updatedHits}});
     }
 
     /*When using a handler in an element, get access to the synthetic
@@ -56,6 +65,7 @@ class App extends Component {
 
     onSearchSubmit(event) {
         const {searchTerm} = this.state;
+        this.setState({searchKey:searchTerm});
         this.fetchTopSearchStories(searchTerm);
         event.preventDefault();
     }
@@ -64,15 +74,24 @@ class App extends Component {
         const url = `${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${searchTerm}&${PARAM_PAGE}${page}`;
         fetch(url)
             .then(response => response.json())
-            .then(result => this.setTopSearchStories(result))
+            .then(results => this.setSearchTopStories(results))
             .catch(error => error);
 
         console.log(url);
     }
 
     render() {
-        const {searchTerm, result} = this.state;
-        const page = (result && result.page) || 0;
+        const {searchTerm, results, searchKey} = this.state;
+        const page = (
+            results &&
+            results[searchKey] &&
+            results[searchKey].page
+        ) || 0;
+        const list = (
+            results &&
+            results[searchKey] &&
+            results[searchKey].hits
+        ) || [];
         console.log(this.state);
         return (
             <div className="page">
@@ -85,13 +104,13 @@ class App extends Component {
                         Search
                     </Search>
                 </div>
-                {result &&
+                {results &&
                 <Table
-                    list={result.hits}
+                    list={list}
                     onDismiss={this.onDismiss}/>
                 }
                 <div className="interactions">
-                    <Button onClick={() => this.fetchTopSearchStories(searchTerm, page +1)}>
+                    <Button onClick={() => this.fetchTopSearchStories(searchKey, page +1)}>
                         More
                     </Button>
                 </div>
