@@ -22,9 +22,6 @@ const smallColumn = {
 const columnHeadings = [{name:'Title', style: largeColumn}, {name:'Author',style:midColumn}, {name:'Comments',
     style:smallColumn}, {name:'Points', style:smallColumn}, {name:'', style:smallColumn}];
 
-const isSearched = searchTerm =>
-    item => item.title.toLowerCase().includes(searchTerm.toLowerCase());
-
 class App extends Component {
     constructor(props) {
         super(props);
@@ -37,6 +34,20 @@ class App extends Component {
         this.setSearchTopStories = this.setSearchTopStories.bind(this);
         this.onDismiss = this.onDismiss.bind(this);
         this.onSearchChange = this.onSearchChange.bind(this);
+        this.onSearchSubmit = this.onSearchSubmit.bind(this);
+        this.fetchSearchTopStories = this.fetchSearchTopStories.bind(this);
+    }
+
+    fetchSearchTopStories(searchTerm){
+        let response;
+        fetch(`${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${searchTerm}`)
+            .then(response =>response.json())
+            .then(result => {
+                this.setSearchTopStories(result);
+                response = result;
+            })
+            .catch(error => error);
+
     }
 
     setSearchTopStories(result){
@@ -45,22 +56,7 @@ class App extends Component {
 
     componentDidMount(){
         const {searchTerm} = this.state;
-
-        fetch(`${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${searchTerm}`)
-            .then(response =>response.json())
-            .then(result => this.setSearchTopStories(result))
-            .catch(error => error);
-    }
-
-
-    onDismiss(id) {
-        const isNotId = item => item.objectID !== id;
-        const updatedHits = this.state.result.hits.filter(isNotId); //filter out on new state object
-        //create new result object by gibing it the old result and updating the hits property
-        // const updatedResults = Object.assign({}, this.state.result, {hits:updatedHits}); //approach 1
-        const updatedResults = {...this.state.result, hits:updatedHits}; //approach 2 - object spreading
-        //set the state with the updated results complex object
-        this.setState({result:updatedResults})
+        this.fetchSearchTopStories(searchTerm);
     }
 
     /*When using a handler in an element, get access to the synthetic
@@ -70,39 +66,58 @@ class App extends Component {
         this.setState({searchTerm: event.target.value});
     }
 
+    onSearchSubmit(event){
+        const {searchTerm} = this.state;
+        this.fetchSearchTopStories(searchTerm);
+        event.preventDefault();
+    }
+
+    onDismiss(id) {
+        const isNotId = item => item.objectID !== id;
+        const updatedHits = this.state.result.hits.filter(isNotId); //filter out on new state object
+        //create new result object by giving it the old result and updating the hits property
+        // const updatedResults = Object.assign({}, this.state.result, {hits:updatedHits}); //approach 1
+        const updatedResults = {...this.state.result, hits:updatedHits}; //approach 2 - object spreading
+        //set the state with the updated results complex object
+        this.setState({result:updatedResults})
+    }
+
     render() {
         const {searchTerm, result} = this.state;
-        if(!result) {return null;}
         return (
             <div className="page">
                 <div className="interactions">
                     <Search
                         value={searchTerm}
-                        onChange={this.onSearchChange}>
+                        onChange={this.onSearchChange}
+                        onSubmit = {this.onSearchSubmit}>
                         Search
                     </Search>
                 </div>
-                <Table
-                    list={result.hits}
-                    pattern={searchTerm}
-                    onDismiss={this.onDismiss}
-                />
+                { result &&
+                    <Table
+                        list={result.hits}
+                        pattern={searchTerm}
+                        onDismiss={this.onDismiss}
+                    />
+                }
             </div>
         );
     }
 }
 
 
-const Search = ({value, onChange, children}) =>
-    <form>{children}
+const Search = ({value, onChange, onSubmit, children}) =>
+    <form onSubmit={onSubmit}>
         <input type="text" value={value} onChange={onChange}/>
+        <button type="submit">{children}</button>
     </form>
 
 
 const Table = ({list, pattern, onDismiss}) =>
     <div className="table">
         <Headers headings={columnHeadings}/>
-        {list.filter(isSearched(pattern)).map(item =>
+        {list.map(item =>
             <div key={item.objectID} className="table-row">
                         <span style={largeColumn}>
                             <a href={item.url}>{item.title}</a>
@@ -115,7 +130,7 @@ const Table = ({list, pattern, onDismiss}) =>
                 </span>
             </div>
         )}
-    </div>
+    </div>;
 
 
 
@@ -128,13 +143,13 @@ const Headers = ({headings}) =>
                 )
             }
         )}
-    </div>
+    </div>;
 
 
 const Button = ({className = '', onClick, children}) =>
     <button className={className} onClick={onClick}>
         {children}
-    </button>
+    </button>;
 
 
 export default App;
