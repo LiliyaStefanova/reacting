@@ -1,4 +1,5 @@
 import React, {Component} from 'react';
+import axios from 'axios';
 import './App.css';
 
 const DEFAULT_QUERY = 'redux';
@@ -26,6 +27,9 @@ const columnHeadings = [{name: 'Title', style: largeColumn}, {name: 'Author', st
 }, {name: 'Points', style: smallColumn}, {name: '', style: smallColumn}];
 
 class App extends Component {
+
+    _isMounted = false;
+
     constructor(props) {
         super(props);
 
@@ -46,14 +50,11 @@ class App extends Component {
     }
 
     fetchSearchTopStories(searchTerm, page = 0) {
-        let response;
-        fetch(`${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${searchTerm}&${PARAM_PAGE}${page}`)
-            .then(response => response.json())
-            .then(results => {
-                this.setSearchTopStories(results);
-                response = results;
+        axios(`${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${searchTerm}&${PARAM_PAGE}${page}`)
+            .then(result => { this._isMounted &&
+                this.setSearchTopStories(result.data);
             })
-            .catch(error => this.setState({error}));
+            .catch(error => this._isMounted && this.setState({error}));
 
     }
 
@@ -71,14 +72,19 @@ class App extends Component {
         });
     }
 
-    needsToSearchTopStories(searchTerm){
+    needsToSearchTopStories(searchTerm) {
         return !this.state.results[searchTerm];
     }
 
     componentDidMount() {
+        this._isMounted = true;
         const {searchTerm} = this.state;
         this.setState({searchKey: searchTerm});
         this.fetchSearchTopStories(searchTerm);
+    }
+
+    componentWillUnmount() {
+        this._isMounted = false;
     }
 
     /*When using a handler in an element, get access to the synthetic
@@ -90,7 +96,7 @@ class App extends Component {
 
     onSearchSubmit(event) {
         const {searchTerm} = this.state;
-        if(this.needsToSearchTopStories(searchTerm)){
+        if (this.needsToSearchTopStories(searchTerm)) {
             this.fetchSearchTopStories(searchTerm);
         }
         this.setState({searchKey: searchTerm});
@@ -116,7 +122,9 @@ class App extends Component {
         const {searchTerm, results, searchKey, error} = this.state;
         const page = (results && results[searchKey] && results[searchKey].page) || 0;  //first will return result.page if result is not null
         const list = (results && results[searchKey] && results[searchKey].hits) || [];
-        if(error){ return <p>Something went wrong</p>;}
+        if (error) {
+            return <p>Something went wrong</p>;
+        }
         return (
             <div className="page">
                 <div className="interactions">
@@ -127,15 +135,15 @@ class App extends Component {
                         Search
                     </Search>
                 </div>
-                { error
-                ? <div className="interactions">
+                {error
+                    ? <div className="interactions">
                         <p>Something went wrong</p>
-                  </div> :
-                <Table
-                    list={list}
-                    pattern={searchTerm}
-                    onDismiss={this.onDismiss}
-                />}
+                    </div> :
+                    <Table
+                        list={list}
+                        pattern={searchTerm}
+                        onDismiss={this.onDismiss}
+                    />}
                 <div className="interactions">
                     <Button onClick={() => this.fetchSearchTopStories(searchKey, page + 1)}>More</Button>
                 </div>
