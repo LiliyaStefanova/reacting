@@ -1,5 +1,6 @@
 import React, {Component} from 'react';
 import axios from 'axios';
+import PropTypes from 'prop-types';
 import './App.css';
 
 const DEFAULT_QUERY = 'redux';
@@ -159,8 +160,15 @@ const Search = ({value, onChange, onSubmit, children}) =>
         <button type="submit">{children}</button>
     </form>
 
+Search.propTypes = {
+    value: PropTypes.string,
+    onChange: PropTypes.func.isRequired,
+    onSubmit:PropTypes.func.isRequired,
+    children:PropTypes.string.isRequired,
+};
 
-const Table = ({list, pattern, onDismiss}) =>
+
+const Table = ({list, onDismiss}) =>
     <div className="table">
         <Headers headings={columnHeadings}/>
         {list.map(item =>
@@ -178,6 +186,20 @@ const Table = ({list, pattern, onDismiss}) =>
         )}
     </div>;
 
+Table.propTypes = {
+    list: PropTypes.arrayOf(
+        PropTypes.shape({
+            objectID: PropTypes.string.isRequired,
+            title: PropTypes.string,
+            author: PropTypes.string,
+            url: PropTypes.string,
+            num_comments: PropTypes.number,
+            points:PropTypes.number,
+        })
+    ).isRequired,
+    onDismiss: PropTypes.func.isRequired,
+};
+
 
 const Headers = ({headings}) =>
     <div className="table-header">
@@ -191,10 +213,20 @@ const Headers = ({headings}) =>
     </div>;
 
 
-const Button = ({className = '', onClick, children}) =>
+const Button = ({className, onClick, children}) =>
     <button className={className} onClick={onClick}>
         {children}
     </button>;
+
+Button.propTypes = {
+    onClick: PropTypes.func.isRequired,
+    className: PropTypes.string,
+    children: PropTypes.node.isRequired,
+};
+
+Button.defaultProps = {
+    className: '',
+};
 
 
 export default App;
