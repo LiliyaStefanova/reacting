@@ -2,6 +2,11 @@ import React, {Component} from 'react';
 import axios from 'axios';
 import PropTypes from 'prop-types';
 import './App.css';
+import { library } from '@fortawesome/fontawesome-svg-core'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faStroopwafel, faSpinner } from '@fortawesome/free-solid-svg-icons'
+
+library.add(faStroopwafel)
 
 const DEFAULT_QUERY = 'redux';
 
@@ -39,6 +44,7 @@ class App extends Component {
             results: null,
             searchKey: '',
             error: null,
+            isLoading: false,
 
         };
 
@@ -51,8 +57,10 @@ class App extends Component {
     }
 
     fetchSearchTopStories(searchTerm, page = 0) {
+        this.setState({isLoading: true});
         axios(`${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${searchTerm}&${PARAM_PAGE}${page}`)
-            .then(result => { this._isMounted &&
+            .then(result => {
+                this._isMounted &&
                 this.setSearchTopStories(result.data);
             })
             .catch(error => this._isMounted && this.setState({error}));
@@ -69,7 +77,8 @@ class App extends Component {
             results: {
                 ...results,
                 [searchKey]: {hits: updatedHits, page}
-            }
+            },
+            isLoading: false,
         });
     }
 
@@ -120,7 +129,7 @@ class App extends Component {
     }
 
     render() {
-        const {searchTerm, results, searchKey, error} = this.state;
+        const {searchTerm, results, searchKey, error, isLoading} = this.state;
         const page = (results && results[searchKey] && results[searchKey].page) || 0;  //first will return result.page if result is not null
         const list = (results && results[searchKey] && results[searchKey].hits) || [];
         if (error) {
@@ -146,31 +155,49 @@ class App extends Component {
                         onDismiss={this.onDismiss}
                     />}
                 <div className="interactions">
-                    <Button onClick={() => this.fetchSearchTopStories(searchKey, page + 1)}>More</Button>
+                    {isLoading ? <Loading/> :
+                        <Button onClick={() => this.fetchSearchTopStories(searchKey, page + 1)}>More</Button>
+                    }
                 </div>
             </div>
         );
     }
 }
 
+class Search extends Component {
 
-const Search = ({value, onChange, onSubmit, children}) =>
-    <form onSubmit={onSubmit}>
-        <input type="text" value={value} onChange={onChange}/>
-        <button type="submit">{children}</button>
-    </form>
+    render() {
+        const {value, onChange, onSubmit, children} = this.props;
+        return (
+            <form onSubmit={onSubmit}>
+                <input type="text" value={value} onChange={onChange}
+                       ref={(node) => {
+                           this.input = node;
+                       }}/>
+                <button type="submit">{children}</button>
+            </form>
+        )
+    }
+
+    componentDidMount() {
+        if (this.input) {
+            this.input.focus();
+        }
+    }
+
+}
 
 Search.propTypes = {
     value: PropTypes.string,
     onChange: PropTypes.func.isRequired,
-    onSubmit:PropTypes.func.isRequired,
-    children:PropTypes.string.isRequired,
+    onSubmit: PropTypes.func.isRequired,
+    children: PropTypes.string.isRequired,
 };
 
 
 const Table = ({list, onDismiss}) =>
     <div className="table">
-        <Headers headings={columnHeadings}/>
+        {/*<Headers headings={columnHeadings}/>*/}
         {list.map(item =>
             <div key={item.objectID} className="table-row">
                         <span style={largeColumn}>
@@ -194,7 +221,7 @@ Table.propTypes = {
             author: PropTypes.string,
             url: PropTypes.string,
             num_comments: PropTypes.number,
-            points:PropTypes.number,
+            points: PropTypes.number,
         })
     ).isRequired,
     onDismiss: PropTypes.func.isRequired,
@@ -227,6 +254,12 @@ Button.propTypes = {
 Button.defaultProps = {
     className: '',
 };
+
+const Loading = () =>
+    <div>Loading...
+    <FontAwesomeIcon icon="stroopwafel"/>
+    </div>;
+
 
 
 export default App;
