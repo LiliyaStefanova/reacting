@@ -1,10 +1,11 @@
 import React, {Component} from 'react';
 import axios from 'axios';
 import PropTypes from 'prop-types';
+import {sortBy} from 'lodash';
 import './App.css';
-import { library } from '@fortawesome/fontawesome-svg-core'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faStroopwafel, faSpinner } from '@fortawesome/free-solid-svg-icons'
+import {library} from '@fortawesome/fontawesome-svg-core'
+import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
+import {faStroopwafel, faSpinner} from '@fortawesome/free-solid-svg-icons'
 
 library.add(faStroopwafel)
 
@@ -32,6 +33,14 @@ const columnHeadings = [{name: 'Title', style: largeColumn}, {name: 'Author', st
     style: smallColumn
 }, {name: 'Points', style: smallColumn}, {name: '', style: smallColumn}];
 
+const SORTS = {
+    NONE: list => list,
+    TITLE: list => sortBy(list, 'title'),
+    AUTHOR: list=> sortBy(list, 'author'),
+    COMMENTS: list => sortBy(list, 'num_comments').reverse(),
+    POINTS: list => sortBy(list, 'points').reverse()
+};
+
 class App extends Component {
 
     _isMounted = false;
@@ -45,7 +54,7 @@ class App extends Component {
             searchKey: '',
             error: null,
             isLoading: false,
-
+            sortKey: 'NONE',
         };
 
         this.setSearchTopStories = this.setSearchTopStories.bind(this);
@@ -54,6 +63,11 @@ class App extends Component {
         this.onSearchSubmit = this.onSearchSubmit.bind(this);
         this.fetchSearchTopStories = this.fetchSearchTopStories.bind(this);
         this.needsToSearchTopStories = this.needsToSearchTopStories.bind(this);
+        this.onSort = this.onSort.bind(this);
+    }
+
+    onSort(sortKey){
+        this.setState({sortKey});
     }
 
     fetchSearchTopStories(searchTerm, page = 0) {
@@ -129,7 +143,7 @@ class App extends Component {
     }
 
     render() {
-        const {searchTerm, results, searchKey, error, isLoading} = this.state;
+        const {searchTerm, results, searchKey, error, isLoading, sortKey} = this.state;
         const page = (results && results[searchKey] && results[searchKey].page) || 0;  //first will return result.page if result is not null
         const list = (results && results[searchKey] && results[searchKey].hits) || [];
         if (error) {
@@ -153,11 +167,12 @@ class App extends Component {
                         list={list}
                         pattern={searchTerm}
                         onDismiss={this.onDismiss}
+                        sortKey={sortKey}
+                        onSort={this.onSort}
                     />}
                 <div className="interactions">
-                    {isLoading ? <Loading/> :
-                        <Button onClick={() => this.fetchSearchTopStories(searchKey, page + 1)}>More</Button>
-                    }
+                    <ButtonWithLoading isLoading={isLoading}
+                        onClick={() => this.fetchSearchTopStories(searchKey, page + 1)}>More</ButtonWithLoading>
                 </div>
             </div>
         );
@@ -195,21 +210,35 @@ Search.propTypes = {
 };
 
 
-const Table = ({list, onDismiss}) =>
+const Table = ({list, onDismiss, sortKey, onSort}) =>
     <div className="table">
-        {/*<Headers headings={columnHeadings}/>*/}
-        {list.map(item =>
-            <div key={item.objectID} className="table-row">
-                        <span style={largeColumn}>
-                            <a href={item.url}>{item.title}</a>
-                        </span>
-                <span style={midColumn}>{item.author}</span>
-                <span style={smallColumn}>{item.num_comments}</span>
-                <span style={smallColumn}>{item.points}</span>
-                <span style={smallColumn}>
-                <Button onClick={() => onDismiss(item.objectID)} className="button-inline">Dismiss</Button>
-                </span>
-            </div>
+        <div className="table-header">
+            <span style={largeColumn}>
+                <Sort sortKey={'TITLE'} onSort={onSort}>Title</Sort>
+            </span>
+            <span style={midColumn}>
+                <Sort sortKey={'AUTHOR'} onSort={onSort}>Author</Sort>
+            </span>
+            <span style={smallColumn}>
+                <Sort sortKey={'COMMENTS'} onSort={onSort}>Comments</Sort>
+            </span>
+            <span style={smallColumn}>
+                <Sort sortKey={'POINTS'} onSort={onSort}>Points</Sort>
+            </span>
+            <span style={smallColumn}>Archive</span>
+        </div>
+            {SORTS[sortKey](list).map(item =>
+                <div key={item.objectID} className="table-row">
+                            <span style={largeColumn}>
+                                <a href={item.url}>{item.title}</a>
+                            </span>
+                    <span style={midColumn}>{item.author}</span>
+                    <span style={smallColumn}>{item.num_comments}</span>
+                    <span style={smallColumn}>{item.points}</span>
+                    <span style={smallColumn}>
+                    <Button onClick={() => onDismiss(item.objectID)} className="button-inline">Dismiss</Button>
+                    </span>
+                </div>
         )}
     </div>;
 
@@ -228,18 +257,6 @@ Table.propTypes = {
 };
 
 
-const Headers = ({headings}) =>
-    <div className="table-header">
-        {headings.map(heading => {
-                const {name, style} = heading;
-                return (
-                    <span style={style}>{name}</span>
-                )
-            }
-        )}
-    </div>;
-
-
 const Button = ({className, onClick, children}) =>
     <button className={className} onClick={onClick}>
         {children}
@@ -255,11 +272,19 @@ Button.defaultProps = {
     className: '',
 };
 
+const Sort = ({sortKey, onSort, children}) =>
+    <Button onClick={() => onSort(sortKey)} className="button-inline">{children}</Button>
+
+
 const Loading = () =>
     <div>Loading...
-    <FontAwesomeIcon icon="stroopwafel"/>
+        <FontAwesomeIcon icon="stroopwafel"/>
     </div>;
 
+// Higher Order Component - typically starts with "with"
 
+const withLoading = (Component) => ({isLoading, ...rest}) => isLoading ? <Loading/> : <Component {...rest} />
+
+const ButtonWithLoading = withLoading(Button);
 
 export default App;
